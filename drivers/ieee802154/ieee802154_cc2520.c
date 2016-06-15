@@ -34,13 +34,9 @@
 #include <net/l2_buf.h>
 #include <packetbuf.h>
 
-#define CONFIG_NETWORKING_LEGACY_RADIO_DRIVER
-
-#ifdef CONFIG_NETWORKING_LEGACY_RADIO_DRIVER
 #include <dev/radio.h>
 #include <net_driver_15_4.h>
 static struct device *cc2520_sglt;
-#endif /* CONFIG_NETWORKING_LEGACY_RADIO_DRIVER */
 
 #include "ieee802154_cc2520.h"
 
@@ -694,7 +690,7 @@ flush:
 /********************
  * Radio device API *
  *******************/
-static int cc2520_set_channel(struct device *dev, uint16_t channel)
+static inline int cc2520_set_channel(struct device *dev, uint16_t channel)
 {
 	struct cc2520_context *cc2520 = dev->driver_data;
 
@@ -715,7 +711,7 @@ static int cc2520_set_channel(struct device *dev, uint16_t channel)
 	return 0;
 }
 
-static int cc2520_set_pan_id(struct device *dev, uint16_t pan_id)
+static inline int cc2520_set_pan_id(struct device *dev, uint16_t pan_id)
 {
 	struct cc2520_context *cc2520 = dev->driver_data;
 
@@ -731,7 +727,7 @@ static int cc2520_set_pan_id(struct device *dev, uint16_t pan_id)
 	return 0;
 }
 
-static int cc2520_set_short_addr(struct device *dev, uint16_t short_addr)
+static inline int cc2520_set_short_addr(struct device *dev, uint16_t short_addr)
 {
 	struct cc2520_context *cc2520 = dev->driver_data;
 
@@ -747,7 +743,8 @@ static int cc2520_set_short_addr(struct device *dev, uint16_t short_addr)
 	return 0;
 }
 
-static int cc2520_set_ieee_addr(struct device *dev, const uint8_t *ieee_addr)
+static inline int cc2520_set_ieee_addr(struct device *dev,
+				       const uint8_t *ieee_addr)
 {
 	struct cc2520_context *cc2520 = dev->driver_data;
 	uint8_t ext_addr[8];
@@ -769,57 +766,7 @@ static int cc2520_set_ieee_addr(struct device *dev, const uint8_t *ieee_addr)
 	return 0;
 }
 
-static int cc2520_set_txpower(struct device *dev, short dbm)
-{
-	struct cc2520_context *cc2520 = dev->driver_data;
-	uint8_t pwr;
-
-	SYS_LOG_DBG("%s: %d\n", dbm);
-
-	/* See chapter 19 part 8 */
-	switch (dbm) {
-	case 5:
-		pwr = 0xF7;
-		break;
-	case 3:
-		pwr = 0xF2;
-		break;
-	case 2:
-		pwr = 0xAB;
-		break;
-	case 1:
-		pwr = 0x13;
-		break;
-	case 0:
-		pwr = 0x32;
-		break;
-	case -2:
-		pwr = 0x81;
-		break;
-	case -4:
-		pwr = 0x88;
-		break;
-	case -7:
-		pwr = 0x2C;
-		break;
-	case -18:
-		pwr = 0x03;
-		break;
-	default:
-		goto error;
-	}
-
-	if (!write_reg_txpower(&cc2520->spi, pwr)) {
-		goto error;
-	}
-
-	return 0;
-error:
-	SYS_LOG_ERR("%s: FAILED\n");
-	return -EIO;
-}
-
-static int cc2520_tx(struct device *dev, struct net_buf *buf)
+static inline int cc2520_tx(struct device *dev, struct net_buf *buf)
 {
 	struct cc2520_context *cc2520 = dev->driver_data;
 	uint8_t retry = 2;
@@ -872,9 +819,9 @@ error:
 	return -EIO;
 }
 
-static const uint8_t *cc2520_get_mac(struct device *dev)
+static inline uint8_t *cc2520_get_mac(struct device *dev)
 {
-	struct cc2520_context *cc2520 = cc2520_sglt->driver_data;
+	struct cc2520_context *cc2520 = dev->driver_data;
 
 	if (cc2520->mac_addr[1] == 0x00) {
 		/* TI OUI */
@@ -892,9 +839,9 @@ static const uint8_t *cc2520_get_mac(struct device *dev)
 	return cc2520->mac_addr;
 }
 
-static int cc2520_start(struct device *dev)
+static inline int cc2520_start(struct device *dev)
 {
-	struct cc2520_context *cc2520 = cc2520_sglt->driver_data;
+	struct cc2520_context *cc2520 = dev->driver_data;
 
 	SYS_LOG_DBG("\n");
 
@@ -912,9 +859,9 @@ static int cc2520_start(struct device *dev)
 	return 0;
 }
 
-static int cc2520_stop(struct device *dev)
+static inline int cc2520_stop(struct device *dev)
 {
-	struct cc2520_context *cc2520 = cc2520_sglt->driver_data;
+	struct cc2520_context *cc2520 = dev->driver_data;
 
 	SYS_LOG_DBG("\n");
 
@@ -935,7 +882,6 @@ static int cc2520_stop(struct device *dev)
 /***************************
  * Legacy Radio device API *
  **************************/
-#ifdef CONFIG_NETWORKING_LEGACY_RADIO_DRIVER
 /**
  * NOTE: This legacy API DOES NOT FIT within Zephyr device driver model
  *       and, as such, will be made obsolete soon (well, hopefully...)
@@ -1085,8 +1031,6 @@ struct radio_driver cc2520_15_4_radio_driver = {
 	.get_object = cc2520_get_object,
 	.set_object = cc2520_set_object,
 };
-#endif /* CONFIG_NETWORKING_LEGACY_RADIO_DRIVER */
-
 
 /******************
  * Initialization *
@@ -1221,9 +1165,7 @@ int cc2520_init(struct device *dev)
 			 cc2520_rx, POINTER_TO_INT(dev),
 			 0, 0, 0);
 
-#ifdef CONFIG_NETWORKING_LEGACY_RADIO_DRIVER
 	cc2520_sglt = dev;
-#endif
 
 	return 0;
 }
