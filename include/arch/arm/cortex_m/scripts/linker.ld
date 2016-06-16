@@ -135,13 +135,15 @@ SECTIONS
 		__gpio_compat_end = .;
 	} GROUP_LINK_IN(ROMABLE_REGION)
 
-	SECTION_PROLOGUE(net_l2, (OPTIONAL),)
+#ifdef CONFIG_NET_YAIP
+	SECTION_PROLOGUE(net_l2_init, (OPTIONAL),)
 	{
 		__net_l2_start = .;
-		*(".net_l2.*")
-		KEEP(*(SORT_BY_NAME(".net_l2*")))
+		*(".net_l2.init")
+		KEEP(*(SORT_BY_NAME(".net_l2.init*")))
 		__net_l2_end = .;
 	} GROUP_LINK_IN(ROMABLE_REGION)
+#endif
 
 	SECTION_PROLOGUE(.ARM.exidx,,)
 	{
@@ -237,6 +239,14 @@ SECTIONS
 		KEEP(*(SORT_BY_NAME(".net_if*")))
 		__net_if_end = .;
 	} GROUP_LINK_IN(RAMABLE_REGION)
+
+	SECTION_PROLOGUE(net_l2_data, (OPTIONAL),)
+	{
+		__net_l2_data_start = .;
+		*(".net_l2.data")
+		KEEP(*(SORT_BY_NAME(".net_l2.data*")))
+		__net_l2_data_end = .;
+	} GROUP_LINK_IN(RAM)
 
 	SECTION_PROLOGUE(net_nbr, (OPTIONAL),)
 	{
