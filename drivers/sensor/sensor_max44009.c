@@ -124,7 +124,7 @@ static int max44009_sample_fetch(struct device *dev, enum sensor_channel chan)
 	struct max44009_data *drv_data = dev->driver_data;
 	uint8_t val_h, val_l;
 
-	__ASSERT(chan == SENSOR_CHAN_ALL || chan == SENSOR_CHAN_LIGHT);
+	__ASSERT_NO_MSG(chan == SENSOR_CHAN_ALL || chan == SENSOR_CHAN_LIGHT);
 
 	drv_data->sample = 0;
 
@@ -184,7 +184,7 @@ int max44009_init(struct device *dev)
 	drv_data->i2c = device_get_binding(CONFIG_MAX44009_I2C_DEV_NAME);
 	if (drv_data->i2c == NULL) {
 		SYS_LOG_DBG("Failed to get pointer to %s device!",
-			    CONFIG_MAX44009_I2C_MASTER_DEV_NAME);
+			    CONFIG_MAX44009_I2C_DEV_NAME);
 		return -EINVAL;
 	}
 

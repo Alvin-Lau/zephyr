@@ -77,6 +77,16 @@ M:	Perez-Gonzalez, Inaky <inaky.perez-gonzalez@intel.com>
 S:	Supported
 F:	doc/
 
+FILE SYSTEM
+M:	Ramesh Thomas <ramesh.thomas@intel.com>
+M:	Kuo-Lang Tseng <kuo-lang.tseng@intel.com>
+S:	Supported
+F:	ext/fs/
+F:	fs/
+F:	include/fs/
+F:	include/fs.h
+F:	samples/fs/
+
 FLASH DRIVER
 M:	Baohong Liu <baohong.liu@intel.com>
 M:	Kuo-Lang Tseng <kuo-lang.tseng@intel.com>
@@ -144,9 +154,12 @@ F:	MAINTAINERS
 
 MBEDTLS
 M:	Sergio Rodriguez <sergio.sf.rodriguez@intel.com>
+M:	Jithu Joseph <jithu.joseph@intel.com>
 M:	Kuo-Lang Tseng <kuo-lang.tseng@intel.com>
 S:	Supported
 F:	ext/lib/crypto/mbedtls/
+F:	samples/net/mbedtls_sslclient/
+F:	tests/crypto/test_mbedtls/
 
 NETWORKING
 M:	Jukka Rissanen <jukka.rissanen@linux.intel.com>
@@ -156,6 +169,13 @@ F:	net/ip/
 F:	include/net/
 F:	samples/net/
 F:	tests/net/
+
+NETWORK APPLICATIONS
+M:	Flavio Santes <flavio.santes@intel.com>
+S:	Supported
+F:	samples/net/dns_client/
+F:	samples/net/nats_clients/
+F:	samples/net/paho_mqtt_clients/
 
 NETWORK BUFFERS
 M:	Johan Hedberg <johan.hedberg@intel.com>
@@ -225,8 +245,10 @@ F:	samples/sensor/
 
 TINYCRYPT
 M:	Constanza Heath <constanza.m.heath@intel.com>
+M:	Flavio Santes <flavio.santes@intel.com>
 S:	Supported
 F:	ext/lib/crypto/tinycrypt/
+F:	tests/crypto/
 
 X86 ARCH
 M:	Benjamin Walsh <benjamin.walsh@windriver.com>

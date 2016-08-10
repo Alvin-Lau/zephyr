@@ -29,7 +29,7 @@
  * - CONFIG_PWM_K64_FTM_x_DEV_NAME: string representing the device name
  * - CONFIG_PWM_K64_FTM_x_PRESCALE: the clock prescaler value
  * - CONFIG_PWM_K64_FTM_x_CLOCK_SOURCE: the clock source
- * - CONFIG_PWM_K64_FTM_DEBUG: enable debug log output for the driver
+ * - CONFIG_SYS_LOG_PWM_K64_FTM_LEVEL: sets log output level for the driver
  * - CONFIG_STDOUT_CONSOLE: choose debug logs using printf of printk
  *
  * The following configuration options need to be defined in
@@ -51,6 +51,7 @@
 
 #include <board.h>
 #include <k20_sim.h>
+#include <power.h>
 #include <pwm.h>
 
 #include "pwm_k64_ftm.h"
@@ -62,17 +63,8 @@
  */
 #undef COMBINE_MODE_SUPPORT
 
-#ifndef CONFIG_PWM_K64_FTM_DEBUG
-#define DBG(...) do { } while ((0))
-#else /* CONFIG_PWM_K64_FTM_DEBUG */
-#if defined(CONFIG_STDOUT_CONSOLE)
-#include <stdio.h>
-#define DBG printf
-#else
-#include <misc/printk.h>
-#define DBG printk
-#endif /* CONFIG_STDOUT_CONSOLE */
-#endif /* CONFIG_PWM_K64_FTM_DEBUG */
+#define SYS_LOG_LEVEL CONFIG_SYS_LOG_PWM_K64_FTM_LEVEL
+#include <misc/sys_log.h>
 
 /* Maximum PWM outputs */
 #define MAX_PWM_OUT		8
@@ -95,8 +87,8 @@ static int pwm_ftm_clk_enable(uint8_t ftm_num)
 		(volatile struct K20_SIM *)PERIPH_ADDR_BASE_SIM; /* sys integ. ctl */
 
 	if (ftm_num > 3) {
-		DBG("ERROR: Illegal FTM number (%d).\n"
-		    "  Cannot enable PWM clock\n", ftm_num);
+		SYS_LOG_ERR("Illegal FTM number (%d).\n  Cannot enable PWM "
+			    "clock", ftm_num);
 		return -EINVAL;
 	}
 
@@ -134,7 +126,7 @@ static int pwm_ftm_configure(struct device *dev, int access_op,
 	uint32_t reg_val;
 
 
-	DBG("pwm_ftm_configure...\n");
+	SYS_LOG_DBG("...");
 
 	const struct pwm_ftm_config * const config =
 		dev->config->config_info;
@@ -164,7 +156,7 @@ static int pwm_ftm_configure(struct device *dev, int access_op,
 	clock_source = (config->clock_source & 0x3) << PWM_K64_FTM_SC_CLKS_SHIFT;
 
 	if (clock_source == 0) {
-		DBG("Warning: no clock source. PWM is disabled\n");
+		SYS_LOG_DBG("Warning: no clock source. PWM is disabled");
 	}
 
 
@@ -214,14 +206,14 @@ static int pwm_ftm_configure(struct device *dev, int access_op,
 	mode_reg_val = sys_read32(PWM_K64_FTM_MODE(config->reg_base));
 	mode_reg_val |= PWM_K64_FTM_MODE_FTMEN | PWM_K64_FTM_MODE_INIT;
 
-	DBG("pwm_ftm_configure sys_write32(0x%08x, 0x%08x)..\n",
+	SYS_LOG_DBG("sys_write32(0x%08x, 0x%08x)..",
 	    mode_reg_val, PWM_K64_FTM_MODE(config->reg_base));
 
 	sys_write32(mode_reg_val, PWM_K64_FTM_MODE(config->reg_base));
 
 	/* Enable enhanced synchronization */
 
-	DBG("pwm_ftm_configure sys_write32(0x%08x, 0x%08x)..\n",
+	SYS_LOG_DBG("sys_write32(0x%08x, 0x%08x)..",
 		PWM_K64_FTM_SYNCONF_SYNCMODE|PWM_K64_FTM_SYNCONF_CNTINC,
 		PWM_K64_FTM_SYNCONF(config->reg_base));
 
@@ -233,12 +225,12 @@ static int pwm_ftm_configure(struct device *dev, int access_op,
 	/* Configure: PS | CLKS | up-counter | disable TOF intr */
 	reg_val = prescale | clock_source;
 
-	DBG("pwm_ftm_configure sys_write32(0x%08x, 0x%08x)..\n",
+	SYS_LOG_DBG("sys_write32(0x%08x, 0x%08x)..",
 	    reg_val, PWM_K64_FTM_SC(config->reg_base));
 
 	sys_write32(reg_val, PWM_K64_FTM_SC(config->reg_base));
 
-	DBG("pwm_ftm_configure sys_write32(0x%08x, 0x%08x)..\n",
+	SYS_LOG_DBG("sys_write32(0x%08x, 0x%08x)..",
 	    config->period, PWM_K64_FTM_MOD(config->reg_base));
 
 	/* set MOD to max */
@@ -247,18 +239,18 @@ static int pwm_ftm_configure(struct device *dev, int access_op,
 	/* set channel control to edge-aligned */
 	reg_val = PWM_K64_FTM_CNSC_MSB | PWM_K64_FTM_CNSC_ELSB;
 
-	DBG("pwm_ftm_configure sys_write32(0x%08x, 0x%08x)..\n",
+	SYS_LOG_DBG("sys_write32(0x%08x, 0x%08x)..",
 	    reg_val, PWM_K64_FTM_CNSC(config->reg_base, channel));
 
 	sys_write32(reg_val, PWM_K64_FTM_CNSC(config->reg_base, channel));
 
-	DBG("pwm_ftm_configure sys_read32 4..\n");
+	SYS_LOG_DBG("sys_read32 4..");
 
 	/* set polarity high for this channel */
 	polarity = sys_read32(PWM_K64_FTM_POL(config->reg_base));
 	polarity &= ~(1<<channel);
 
-	DBG("pwm_ftm_configure sys_write32(0x%08x, 0x%08x)..\n",
+	SYS_LOG_DBG("sys_write32(0x%08x, 0x%08x)..",
 	    polarity, PWM_K64_FTM_POL(config->reg_base));
 
 	sys_write32(polarity, PWM_K64_FTM_POL(config->reg_base));
@@ -290,7 +282,7 @@ static int pwm_ftm_set_values(struct device *dev, int access_op,
 	struct pwm_ftm_drv_data * const drv_data =
 		(struct pwm_ftm_drv_data * const)dev->driver_data;
 
-	DBG("pwm_ftm_set_values (on=%d, off=%d)\n", on, off);
+	SYS_LOG_DBG("(on=%d, off=%d)", on, off);
 
 	uint32_t pwm_pair;
 	uint32_t combine;
@@ -312,7 +304,7 @@ static int pwm_ftm_set_values(struct device *dev, int access_op,
 	if ((on >= config->period) || (off >= config->period)) {
 		/* Fully on. Set to 100% */
 
-		DBG("pwm_ftm_set_values sys_write32(0x%08x, 0x%08x)..\n",
+		SYS_LOG_DBG("sys_write32(0x%08x, 0x%08x)..",
 		    config->period, PWM_K64_FTM_CNV(config->reg_base, channel));
 
 		/* CnV = pulse width */
@@ -321,7 +313,7 @@ static int pwm_ftm_set_values(struct device *dev, int access_op,
 	} else if (off == 0) {
 		/* Fully off. Set to 0% */
 
-		DBG("pwm_ftm_set_values sys_write32(0x%08x, 0x%08x)..\n",
+		SYS_LOG_DBG("sys_write32(0x%08x, 0x%08x)..",
 		    0, PWM_K64_FTM_CNV(config->reg_base, channel));
 
 		/* CnV = 0 */
@@ -341,12 +333,14 @@ static int pwm_ftm_set_values(struct device *dev, int access_op,
 
 			/* If phase != 0 enable combine mode */
 			if (channel % 2 != 0) {
-				DBG("If Phase is non-zero pwm must be 0, 2, 4, 6.\n");
+				SYS_LOG_DBG("If Phase is non-zero pwm must be "
+					    "0, 2, 4, 6.");
 				return -EINVAL;
 			}
 
-			DBG("Note: Enabling phase on pwm%d therefore "
-			     "pwm%d is not valid for output\n", channel, channel+1);
+			SYS_LOG_DBG("Note: Enabling phase on pwm%d therefore "
+				    "pwm%d is not valid for output", channel,
+				    channel+1);
 
 			pwm_pair = channel / 2;
 
@@ -354,14 +348,16 @@ static int pwm_ftm_set_values(struct device *dev, int access_op,
 			switch (pwm_pair) {
 			case 0:
 				if (!config->phase_enable0) {
-					DBG("Error: Phase capability must be enabled on FTM0\n");
+					SYS_LOG_ERR("Phase capability must be "
+						    "enabled on FTM0");
 					return -EINVAL;
 				}
 				break;
 
 			case 1:
 				if (!config->phase_enable2) {
-					DBG("Error: Phase capability must be enabled on FTM2\n");
+					SYS_LOG_ERR("Phase capability must be "
+						    "enabled on FTM2");
 					return -EINVAL;
 				}
 				drv_data->phase[1] = on;
@@ -369,14 +365,16 @@ static int pwm_ftm_set_values(struct device *dev, int access_op,
 
 			case 2:
 				if (!config->phase_enable4) {
-					DBG("Error: Phase capability must be enabled on FTM4\n");
+					SYS_LOG_ERR("Phase capability must be "
+						    "enabled on FTM4");
 					return -EINVAL;
 				}
 				break;
 
 			case 3:
 				if (!config->phase_enable6) {
-					DBG("Error: Phase capability must be enabled on FTM0\n");
+					SYS_LOG_ERR("Phase capability must be "
+						    "enabled on FTM0");
 					return -EINVAL;
 				}
 				break;
@@ -391,24 +389,25 @@ static int pwm_ftm_set_values(struct device *dev, int access_op,
 				sys_read32(PWM_K64_FTM_COMBINE(config->reg_base));
 			combine |= 1 << (pwm_pair * 8);
 
-			DBG("pwm_ftm_set_values sys_write32(0x%08x, 0x%08x)..\n",
+			SYS_LOG_DBG("sys_write32(0x%08x, 0x%08x)..",
 			    combine, PWM_K64_FTM_COMBINE(config->reg_base));
 
 			sys_write32(combine, PWM_K64_FTM_COMBINE(config->reg_base));
 
-			DBG("pwm_ftm_set_values sys_write32(0x%08x, 0x%08x)..\n",
+			SYS_LOG_DBG("sys_write32(0x%08x, 0x%08x)..",
 			    on, PWM_K64_FTM_CNV(config->reg_base, channel));
 
 			/* set the on value */
 			sys_write32(on, PWM_K64_FTM_CNV(config->reg_base, channel));
 
-			DBG("pwm_ftm_set_values sys_write32(0x%08x, 0x%08x)..\n",
+			SYS_LOG_DBG("sys_write32(0x%08x, 0x%08x)..",
 			    off, PWM_K64_FTM_CNV(config->reg_base, channel+1));
 
 			/* set the off value */
 			sys_write32(off, PWM_K64_FTM_CNV(config->reg_base, channel+1));
 #else /*COMBINE_MODE_SUPPORT*/
-			DBG("Error: \"on\" value must be zero. Phase is not supported\n");
+			SYS_LOG_ERR("\"on\" value must be zero. Phase "
+				    "is not supported");
 			return -EINVAL;
 #endif /*COMBINE_MODE_SUPPORT*/
 
@@ -428,14 +427,14 @@ static int pwm_ftm_set_values(struct device *dev, int access_op,
 				sys_read32(PWM_K64_FTM_COMBINE(config->reg_base));
 			combine &= ~(1 << (pwm_pair * 8));
 
-			DBG("pwm_ftm_set_values sys_write32(0x%08x, 0x%08x)..\n",
+			SYS_LOG_DBG("sys_write32(0x%08x, 0x%08x)..",
 			    combine, PWM_K64_FTM_COMBINE(config->reg_base));
 
 			sys_write32(combine, PWM_K64_FTM_COMBINE(config->reg_base));
 
 			/* set the off value */
 
-			DBG("pwm_ftm_set_values sys_write32(0x%08x, 0x%08x)..\n",
+			SYS_LOG_DBG("sys_write32(0x%08x, 0x%08x)..",
 			    off, PWM_K64_FTM_CNV(config->reg_base, channel));
 
 			sys_write32(off, PWM_K64_FTM_CNV(config->reg_base, channel));
@@ -443,7 +442,7 @@ static int pwm_ftm_set_values(struct device *dev, int access_op,
 
 	}
 
-	DBG("pwm_ftm_set_values done.\n");
+	SYS_LOG_DBG("done.");
 
 	return 0;
 }
@@ -473,7 +472,7 @@ static int pwm_ftm_set_duty_cycle(struct device *dev, int access_op,
 
 	ARG_UNUSED(access_op);
 
-	DBG("pwm_ftm_set_duty_cycle...\n");
+	SYS_LOG_DBG("...");
 
 	if (duty == 0) {
 		/* Turn off PWM */
@@ -522,8 +521,7 @@ static int pwm_ftm_set_duty_cycle(struct device *dev, int access_op,
 
 		off = on + config->period * duty / 100;
 
-		DBG("pwm_ftm_set_duty_cycle on=%d, off=%d, "
-		    "period=%d, duty=%d.\n",
+		SYS_LOG_DBG("on=%d, off=%d, period=%d, duty=%d.",
 		    on, off, config->period, duty);
 
 		/* check for valid off value */
@@ -533,7 +531,7 @@ static int pwm_ftm_set_duty_cycle(struct device *dev, int access_op,
 
 	return pwm_ftm_set_values(dev, access_op, channel, on, off);
 
-	DBG("pwm_ftm_set_duty_cycle done.\n");
+	SYS_LOG_DBG("done.");
 
 }
 
@@ -569,7 +567,7 @@ static int pwm_ftm_set_phase(struct device *dev, int access_op,
 
 	ARG_UNUSED(access_op);
 
-	DBG("pwm_ftm_set_phase...\n");
+	SYS_LOG_DBG("...");
 
 	if ((phase < 0) || (phase > config->period))
 		return -ENOTSUP;
@@ -604,7 +602,7 @@ static int pwm_ftm_set_phase(struct device *dev, int access_op,
 		return -ENOTSUP;
 	}
 
-	DBG("pwm_ftm_set_phase done.\n");
+	SYS_LOG_DBG("done.");
 
 	return 0;
 #else /*COMBINE_MODE_SUPPORT*/
@@ -614,12 +612,13 @@ static int pwm_ftm_set_phase(struct device *dev, int access_op,
 	ARG_UNUSED(channel);
 	ARG_UNUSED(phase);
 
-	DBG("ERROR: non-zero phase is not supported.\n");
+	SYS_LOG_ERR("non-zero phase is not supported.");
 
 	return -ENOTSUP;
 #endif /*COMBINE_MODE_SUPPORT*/
 }
 
+#ifdef CONFIG_DEVICE_POWER_MANAGEMENT
 /**
  * @brief API call to disable FTM
  *
@@ -627,18 +626,19 @@ static int pwm_ftm_set_phase(struct device *dev, int access_op,
  * disabling the FTM
  *
  * @param dev Device struct
+ * @param pm_policy The power management policy to enact on the device
  *
  * @return 0 if successful, failed otherwise
  */
 
-static int pwm_ftm_suspend(struct device *dev)
+static int pwm_ftm_suspend(struct device *dev, int pm_policy)
 {
 	uint32_t reg_val;
 
 	const struct pwm_ftm_config * const config =
 		dev->config->config_info;
 
-	DBG("pwm_ftm_suspend...\n");
+	SYS_LOG_DBG("...");
 
 	/* set clock source to "no clock selected" */
 
@@ -650,7 +650,7 @@ static int pwm_ftm_suspend(struct device *dev)
 
 	sys_write32(reg_val, PWM_K64_FTM_SC(config->reg_base));
 
-	DBG("pwm_ftm_suspend done.\n");
+	SYS_LOG_DBG("done.");
 
 	return 0;
 
@@ -664,11 +664,13 @@ static int pwm_ftm_suspend(struct device *dev)
  * to "no clock selected" due to a call to pwm_ftm_suspend.
  *
  * @param dev Device struct
+ * @param pm_policy The power management policy from which the device is
+ * returning
  *
  * @return 0 if successful, failed otherwise
  */
 
-static int pwm_ftm_resume(struct device *dev)
+static int pwm_ftm_resume(struct device *dev, int pm_policy)
 {
 	uint32_t clock_source;
 	uint32_t reg_val;
@@ -678,7 +680,7 @@ static int pwm_ftm_resume(struct device *dev)
 	const struct pwm_ftm_config * const config =
 		dev->config->config_info;
 
-	DBG("pwm_ftm_resume...\n");
+	SYS_LOG_DBG("...");
 
 	clock_source = (config->clock_source << PWM_K64_FTM_SC_CLKS_SHIFT) &&
 		PWM_K64_FTM_SC_CLKS_MASK;
@@ -691,18 +693,19 @@ static int pwm_ftm_resume(struct device *dev)
 
 	sys_write32(reg_val, PWM_K64_FTM_SC(config->reg_base));
 
-	DBG("pwm_ftm_resume done.\n");
+	SYS_LOG_DBG("done.");
 
 	return 0;
 }
+#endif
+
+DEFINE_DEVICE_PM_OPS(pwm, pwm_ftm_suspend, pwm_ftm_resume);
 
 static struct pwm_driver_api pwm_ftm_drv_api_funcs = {
 	.config = pwm_ftm_configure,
 	.set_values = pwm_ftm_set_values,
 	.set_duty_cycle = pwm_ftm_set_duty_cycle,
 	.set_phase = pwm_ftm_set_phase,
-	.suspend = pwm_ftm_suspend,
-	.resume = pwm_ftm_resume,
 };
 
 /**
@@ -714,7 +717,7 @@ static struct pwm_driver_api pwm_ftm_drv_api_funcs = {
 int pwm_ftm_init(struct device *dev)
 {
 
-	DBG("pwm_ftm_init...\n");
+	SYS_LOG_DBG("...");
 
 	return 0;
 }
@@ -759,10 +762,11 @@ static struct pwm_ftm_config pwm_ftm_0_cfg = {
 
 static struct pwm_ftm_drv_data pwm_ftm_0_drvdata;
 
-DEVICE_AND_API_INIT(pwm_ftm_0, CONFIG_PWM_K64_FTM_0_DEV_NAME, pwm_ftm_init,
-		    &pwm_ftm_0_drvdata, &pwm_ftm_0_cfg,
-		    SECONDARY, CONFIG_KERNEL_INIT_PRIORITY_DEFAULT,
-		    &pwm_ftm_drv_api_funcs);
+DEVICE_AND_API_INIT_PM(pwm_ftm_0, CONFIG_PWM_K64_FTM_0_DEV_NAME, pwm_ftm_init,
+		       DEVICE_PM_OPS_GET(pwm), &pwm_ftm_0_drvdata,
+		       &pwm_ftm_0_cfg, SECONDARY,
+		       CONFIG_KERNEL_INIT_PRIORITY_DEFAULT,
+		       &pwm_ftm_drv_api_funcs);
 
 #endif /* CONFIG_PWM_K64_FTM_0 */
 
@@ -805,10 +809,11 @@ static struct pwm_ftm_config pwm_ftm_1_cfg = {
 
 static struct pwm_ftm_drv_data pwm_ftm_1_drvdata;
 
-DEVICE_AND_API_INIT(pwm_ftm_1, CONFIG_PWM_K64_FTM_1_DEV_NAME, pwm_ftm_init,
-		    &pwm_ftm_1_drvdata, &pwm_ftm_1_cfg,
-		    SECONDARY, CONFIG_KERNEL_INIT_PRIORITY_DEFAULT,
-		    &pwm_ftm_drv_api_funcs);
+DEVICE_AND_API_INIT_PM(pwm_ftm_1, CONFIG_PWM_K64_FTM_1_DEV_NAME, pwm_ftm_init,
+		       DEVICE_PM_OPS_GET(pwm), &pwm_ftm_1_drvdata,
+		       &pwm_ftm_1_cfg, SECONDARY,
+		       CONFIG_KERNEL_INIT_PRIORITY_DEFAULT,
+		       &pwm_ftm_drv_api_funcs);
 
 #endif /* CONFIG_PWM_K64_FTM_1 */
 
@@ -852,10 +857,11 @@ static struct pwm_ftm_config pwm_ftm_2_cfg = {
 
 static struct pwm_ftm_drv_data pwm_ftm_2_drvdata;
 
-DEVICE_AND_API_INIT(pwm_ftm_2, CONFIG_PWM_K64_FTM_2_DEV_NAME, pwm_ftm_init,
-		    &pwm_ftm_2_drvdata, &pwm_ftm_2_cfg,
-		    SECONDARY, CONFIG_KERNEL_INIT_PRIORITY_DEFAULT,
-		    &pwm_ftm_drv_api_funcs);
+DEVICE_AND_API_INIT_PM(pwm_ftm_2, CONFIG_PWM_K64_FTM_2_DEV_NAME, pwm_ftm_init,
+		       DEVICE_PM_OPS_GET(pwm), &pwm_ftm_2_drvdata,
+		       &pwm_ftm_2_cfg, SECONDARY,
+		       CONFIG_KERNEL_INIT_PRIORITY_DEFAULT,
+		       &pwm_ftm_drv_api_funcs);
 
 #endif /* CONFIG_PWM_K64_FTM_2 */
 
@@ -899,9 +905,10 @@ static struct pwm_ftm_config pwm_ftm_3_cfg = {
 
 static struct pwm_ftm_drv_data pwm_ftm_3_drvdata;
 
-DEVICE_AND_API_INIT(pwm_ftm_3, CONFIG_PWM_K64_FTM_3_DEV_NAME, pwm_ftm_init,
-		    &pwm_ftm_3_drvdata, &pwm_ftm_3_cfg,
-		    SECONDARY, CONFIG_KERNEL_INIT_PRIORITY_DEFAULT,
-		    &pwm_ftm_drv_api_funcs);
+DEVICE_AND_API_INIT_PM(pwm_ftm_3, CONFIG_PWM_K64_FTM_3_DEV_NAME, pwm_ftm_init,
+		       DEVICE_PM_OPS_GET(pwm), &pwm_ftm_3_drvdata,
+		       &pwm_ftm_3_cfg, SECONDARY,
+		       CONFIG_KERNEL_INIT_PRIORITY_DEFAULT,
+		       &pwm_ftm_drv_api_funcs);
 
 #endif /* CONFIG_PWM_K64_FTM_3 */

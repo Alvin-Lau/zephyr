@@ -43,6 +43,7 @@
 #include "i2c_dw.h"
 #include "i2c_dw_registers.h"
 
+#define SYS_LOG_LEVEL CONFIG_SYS_LOG_I2C_LEVEL
 #include <misc/sys_log.h>
 
 static inline void _i2c_dw_data_ask(struct device *dev)
@@ -636,27 +637,9 @@ static int i2c_dw_runtime_configure(struct device *dev, uint32_t config)
 	return rc;
 }
 
-static int i2c_dw_suspend(struct device *dev)
-{
-	SYS_LOG_DBG("I2C: suspend called - function not yet implemented");
-	/* TODO - add this code */
-	return 0;
-}
-
-
-static int i2c_dw_resume(struct device *dev)
-{
-	SYS_LOG_DBG("I2C: resume called - function not yet implemented");
-	/* TODO - add this code */
-	return 0;
-}
-
-
 static struct i2c_driver_api funcs = {
 	.configure = i2c_dw_runtime_configure,
 	.transfer = i2c_dw_transfer,
-	.suspend = i2c_dw_suspend,
-	.resume = i2c_dw_resume,
 };
 
 

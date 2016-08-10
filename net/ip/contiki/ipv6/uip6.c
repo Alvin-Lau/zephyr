@@ -1712,9 +1712,6 @@ uip_process(struct net_buf **buf_out, uint8_t flag)
  udp_send:
   PRINTF("In udp_send\n");
 
-  if(uip_slen(buf) == 0) {
-    goto drop;
-  }
   uip_len(buf) = uip_slen(buf) + UIP_IPUDPH_LEN;
 
   /* For IPv6, the IP length field does not include the IPv6 IP header
@@ -2580,7 +2577,7 @@ tcp_send_syn:
 
 #if UIP_TCP
   /* Clear any pending packet */
-  if (uip_connr->buf) {
+  if (uip_connr && uip_connr->buf) {
     tcp_cancel_retrans_timer(uip_connr);
     switch (uip_connr->tcpstateflags & UIP_TS_MASK) {
     case UIP_FIN_WAIT_1:

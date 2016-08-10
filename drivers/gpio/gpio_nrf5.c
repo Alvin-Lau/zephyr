@@ -139,7 +139,7 @@ static int gpio_nrf5_config(struct device *dev,
 			gpio->PIN_CNF[pin] = GPIO_SENSE_DISABLE |
 					     GPIO_DRIVE_S0S1    |
 					     pull               |
-					     GPIO_INPUT_CONNECT |
+					     GPIO_INPUT_DISCONNECT |
 					     GPIO_DIR_OUTPUT;
 		} else {
 			/* Config as input */
@@ -151,6 +151,36 @@ static int gpio_nrf5_config(struct device *dev,
 		}
 	}
 
+	return 0;
+}
+
+static int gpio_nrf5_read(struct device *dev,
+			  int access_op, uint32_t pin, uint32_t *value)
+{
+	volatile struct _gpio *gpio = GPIO_STRUCT(dev);
+
+	if (access_op == GPIO_ACCESS_BY_PIN) {
+		*value = gpio->IN & BIT(pin);
+	} else { /* GPIO_ACCESS_BY_PORT */
+		return -ENOTSUP;
+	}
+	return 0;
+}
+
+static int gpio_nrf5_write(struct device *dev,
+			   int access_op, uint32_t pin, uint32_t value)
+{
+	volatile struct _gpio *gpio = GPIO_STRUCT(dev);
+
+	if (access_op == GPIO_ACCESS_BY_PIN) {
+		if (value) { /* 1 */
+			gpio->OUTSET |= BIT(pin);
+		} else { /* 0 */
+			gpio->OUTCLR |= BIT(pin);
+		}
+	} else { /* GPIO_ACCESS_BY_PORT */
+		return -ENOTSUP;
+	}
 	return 0;
 }
 
@@ -166,6 +196,8 @@ static void gpio_nrf5_port_isr(void *dev)
 
 static struct gpio_driver_api gpio_nrf5_drv_api_funcs = {
 	.config = gpio_nrf5_config,
+	.read = gpio_nrf5_read,
+	.write = gpio_nrf5_write,
 };
 
 /* Initialization for GPIO Port 0 */

@@ -518,7 +518,7 @@ scripts: scripts_basic include/config/auto.conf include/config/tristate.conf
 
 # arch/ must be last here so that .gnu.linkonce magic for interrupts/exceptions
 # works as expected
-core-y := lib/ kernel/ misc/ net/ boards/ ext/ usb/ arch/
+core-y := lib/ kernel/ misc/ net/ boards/ ext/ usb/ fs/ arch/
 drivers-y := drivers/
 
 ifneq ($(strip $(MAKEFILE_APP_DIR)),)
@@ -768,6 +768,11 @@ LINK_LIBS := $(foreach l,$(ALL_LIBS), -l$(l))
 OUTPUT_FORMAT ?= elf32-i386
 OUTPUT_ARCH ?= i386
 
+quiet_cmd_ar_target = AR      $@
+cmd_ar_target = rm -f $@; $(AR) rcT$(KBUILD_ARFLAGS) $@ $(KBUILD_ZEPHYR_MAIN)
+libzephyr.a: $(zephyr-deps)
+	$(call cmd,ar_target)
+
 quiet_cmd_create-lnk = LINK    $@
       cmd_create-lnk =								\
 (										\
@@ -780,8 +785,8 @@ quiet_cmd_create-lnk = LINK    $@
 	echo "$(LINKFLAGPREFIX)--whole-archive";				\
 	echo "$(KBUILD_ZEPHYR_APP)";						\
 	echo "$(app-y)";							\
+	echo "libzephyr.a";							\
 	echo "$(LINKFLAGPREFIX)--no-whole-archive";         			\
-	echo "$(KBUILD_ZEPHYR_MAIN)";						\
 	echo "$(objtree)/arch/$(ARCH)/core/offsets/offsets.o"; 			\
 	echo "$(LINKFLAGPREFIX)--end-group"; 					\
 	echo "$(LIB_INCLUDE_DIR) $(LINK_LIBS)";					\
@@ -802,7 +807,7 @@ final-linker.cmd: $(zephyr-deps)
 
 TMP_ELF = .tmp_$(KERNEL_NAME).prebuilt
 
-$(TMP_ELF): $(zephyr-deps) $(KBUILD_ZEPHYR_APP) $(app-y) linker.cmd $(KERNEL_NAME).lnk
+$(TMP_ELF): $(zephyr-deps) libzephyr.a $(KBUILD_ZEPHYR_APP) $(app-y) linker.cmd $(KERNEL_NAME).lnk
 	$(Q)$(CC) -T linker.cmd @$(KERNEL_NAME).lnk -o $@
 
 quiet_cmd_gen_idt = SIDT    $@
